@@ -17,7 +17,6 @@ class HackerNewsListView extends AsyncNotifier<List<Story>>{
   Future<List<Story>> getAll() async{
     state = const AsyncLoading();
     List<Story> newsStory = await WebService().getTopStories();
-    print('story:$newsStory');
     return newsStory;
 
   }
