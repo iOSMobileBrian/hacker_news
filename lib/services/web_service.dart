@@ -1,53 +1,43 @@
-
 import 'dart:convert';
 
 import 'package:hacker_news/models/story.dart';
 import 'package:http/http.dart' as http;
 
-class WebService{
-
+class WebService {
   final url = "https://hacker-news.firebaseio.com/v0/topstories.json?print=pretty";
 
+  Future<List<Story>> getStories(Iterable<int> storyIds) async {
+    final futures = storyIds.map((id) async {
+      try {
+        final idUrl = "https://hacker-news.firebaseio.com/v0/item/$id.json?print=pretty";
+        final response = await http.get(Uri.parse(idUrl));
+        if (response.statusCode == 200) {
+          final json = jsonDecode(response.body);
+          return Story.fromJson(json);
+        } else {
+          throw Exception("Error fetching story with ID $id: ${response.statusCode}");
+        }
+      } catch (e) {
+        print("Error fetching story with ID $id: ${e.toString()}");
+        return null;
+      }
+    }).toList();
 
-  Future<Story> _getStory(int storyId) async{
-
-
-    final response = await http.get(Uri.http("https://hacker-news.firebaseio.com/", "v0/item/$storyId.json?print=pretty"));
-
-    if(response.statusCode == 200){
-
-      final json = jsonDecode(response.body);
-
-      return Story.fromJson(json);
-
-    }else{
-
-      throw Exception("an error occurred");
-    }
+    final results = await Future.wait(futures);
+    return results.whereType<Story>().toList();
   }
-
 
   Future<List<Story>> getTopStories() async {
+    final response = await http.get(Uri.parse(url));
 
-    final uri = Uri.http("https://hacker-news.firebaseio.com/", "v0/topstories.json?print=pretty", {'q':'{http}'});
-
-   final response = await http.get(uri);
-
-   if (response.statusCode == 200){
-
-     Iterable storyIds = jsonDecode(response.body);
-     print(storyIds);
-     
-     return Future.wait(storyIds.take(10).map((storyId){
-
-       return _getStory(storyId);
-     }));
-   }else{
-
-     throw Exception("an error has occurred");
-   }
-
+    if (response.statusCode == 200) {
+      Iterable storyIds = jsonDecode(response.body);
+      Iterable<int> ids = storyIds.take(10).map((e) => (e as int));
+      print(ids);
+      final storyList = getStories(ids);
+      return storyList;
+    } else {
+      throw Exception('Failed to load stories');
+    }
   }
-
-
 }
